@@ -31,7 +31,7 @@ git clone https://github.com/santhosh46v/Weather-App.git
 cd Weather-App
 
 npm install
-# or
+ or
 yarn install
 
 ## ⚙️ API Key Configuration
