@@ -50,7 +50,9 @@ npx expo start
 
 Then:
 • Scan the QR code using Expo Go on your mobile device
+
 • Press a to open in Android emulator
+
 • Press i to open in iOS simulator (Mac only)
 
 ## 🧪 App Features
@@ -58,8 +60,11 @@ Then:
 • Search weather by city name
 
 • Use your current location to fetch weather
+
 • Dynamic Lottie animations based on weather
+
 • Error messages for invalid input or no internet
+
 • Local data saving using AsyncStorage
 
 ## 📷 Screenshots
