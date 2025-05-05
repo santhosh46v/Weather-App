@@ -56,6 +56,7 @@ Then:
 ## 🧪 App Features
 
 • Search weather by city name
+
 • Use your current location to fetch weather
 • Dynamic Lottie animations based on weather
 • Error messages for invalid input or no internet
