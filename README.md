@@ -1,4 +1,4 @@
-# 🌦️ Weather AppAdd commentMore actions
+# 🌦️ Weather App
 
 A simple and beautiful weather application built using **React Native** and **Expo**. It fetches live weather data using the **OpenWeatherMap API**.
 
@@ -49,6 +49,7 @@ Start the Expo development server:
 npx expo start
 
 Then:
+
 • Scan the QR code using Expo Go on your mobile device
 
 • Press a to open in Android emulator
