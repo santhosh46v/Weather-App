@@ -243,6 +243,7 @@ const styles = StyleSheet.create({
     borderLeftColor: "#f9ca24",
     width: "100%",
     marginTop: 5,
+    marginBottom: 20
   },
   sunTimesRow: {
     flexDirection: "row",

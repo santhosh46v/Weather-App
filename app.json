@@ -3,6 +3,7 @@
     "name": "Aeris",
     "slug": "Aeris",
     "version": "1.0.0",
+    "scheme": "aeris",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,11 +21,22 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.san_thosh2.Aeris"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "permissions": ["ACCESS_FINE_LOCATION"]
+    "permissions": [
+      "ACCESS_FINE_LOCATION"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cb83579e-b543-4ebf-93a0-2f221479fcee"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }
