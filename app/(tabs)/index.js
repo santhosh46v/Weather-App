@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 60,
     marginBottom: 25,
   },
   greeting: {

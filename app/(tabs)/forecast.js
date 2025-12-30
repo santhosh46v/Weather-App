@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { loadWeatherData } from '../../utils/storage';
+import { fetchForecastByCoords } from '../../services/weatherService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,19 +32,25 @@ export default function ForecastScreen() {
   }, []);
 
   useEffect(() => {
-    if (weatherData) {
-      generateForecastData();
+    if (weatherData && forecastData.length) {
       animateContent();
     }
-  }, [weatherData]);
+  }, [weatherData, forecastData]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       const data = await loadWeatherData();
       setWeatherData(data);
+
+      if (data) {
+        await loadForecast(data);
+      } else {
+        setForecastData([]);
+      }
     } catch (error) {
       console.error('Error loading weather data:', error);
+      setForecastData([]);
     } finally {
       setLoading(false);
     }
@@ -70,48 +77,20 @@ export default function ForecastScreen() {
     ]).start();
   };
 
-  const generateForecastData = () => {
-    if (!weatherData) return;
-
-    const forecast = [];
-    const today = new Date();
-    const weatherConditions = [
-      { condition: 'Sunny', icon: 'weather-sunny' },
-      { condition: 'Partly Cloudy', icon: 'weather-partly-cloudy' },
-      { condition: 'Cloudy', icon: 'weather-cloudy' },
-      { condition: 'Light Rain', icon: 'weather-rainy' },
-      { condition: 'Clear', icon: 'weather-night' },
-    ];
-
-    for (let i = 1; i <= 5; i++) {
-      const forecastDate = new Date(today);
-      forecastDate.setDate(today.getDate() + i);
-      
-      const randomCondition = weatherConditions[Math.floor(Math.random() * weatherConditions.length)];
-      
-      
-      let baseTemp = weatherData.main.temp;
-      if (baseTemp > 100) {
-        baseTemp = baseTemp - 273.15;
+  const loadForecast = async (data) => {
+    try {
+      if (!data?.coord?.lat || !data?.coord?.lon) {
+        setForecastData([]);
+        return;
       }
-  
-      const tempVariation = Math.random() * 6 - 3;
-      const tempHigh = Math.round(baseTemp + Math.abs(tempVariation) + Math.random() * 3);
-      const tempLow = Math.round(baseTemp - Math.abs(tempVariation) - Math.random() * 5);
-      
-      forecast.push({
-        date: forecastDate,
-        day: forecastDate.toLocaleDateString('en', { weekday: 'short' }),
-        condition: randomCondition.condition,
-        icon: randomCondition.icon,
-        tempHigh: tempHigh,
-        tempLow: tempLow,
-        humidity: Math.round(Math.max(30, Math.min(95, weatherData.main.humidity + Math.random() * 20 - 10))),
-        windSpeed: Math.round(weatherData.wind?.speed * 3.6 + Math.random() * 5) || Math.round(Math.random() * 15 + 5),
-      });
-    }
 
-    setForecastData(forecast);
+      const apiForecast = await fetchForecastByCoords(data.coord.lat, data.coord.lon);
+      const parsedForecast = buildDailyForecast(apiForecast);
+      setForecastData(parsedForecast);
+    } catch (error) {
+      console.error('Error fetching forecast data:', error);
+      setForecastData([]);
+    }
   };
 
   const getBackgroundColors = (weatherId) => {
@@ -134,6 +113,69 @@ export default function ForecastScreen() {
     } else {
       return ['#4c669f', '#3b5998', '#192f6a'];
     }
+  };
+
+  const mapWeatherIdToIcon = (weatherId) => {
+    if (weatherId >= 200 && weatherId < 300) return 'weather-lightning';
+    if (weatherId >= 300 && weatherId < 400) return 'weather-rainy';
+    if (weatherId >= 500 && weatherId < 600) return 'weather-pouring';
+    if (weatherId >= 600 && weatherId < 700) return 'weather-snowy';
+    if (weatherId >= 700 && weatherId < 800) return 'weather-fog';
+    if (weatherId === 800) return 'weather-sunny';
+    if (weatherId > 800 && weatherId < 900) return 'weather-cloudy';
+    return 'weather-cloudy';
+  };
+
+  const buildDailyForecast = (apiForecast) => {
+    if (!apiForecast?.list) return [];
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const groupedByDate = {};
+
+    apiForecast.list.forEach((entry) => {
+      const dateStr = entry.dt_txt.split(' ')[0];
+      if (dateStr === todayStr) return; // skip today
+
+      if (!groupedByDate[dateStr]) {
+        groupedByDate[dateStr] = [];
+      }
+      groupedByDate[dateStr].push(entry);
+    });
+
+    const sortedDates = Object.keys(groupedByDate).sort().slice(0, 5);
+
+    return sortedDates.map((dateStr) => {
+      const entries = groupedByDate[dateStr];
+      const temps = entries.map((e) => e.main.temp);
+      const humidityValues = entries.map((e) => e.main.humidity);
+      const windValues = entries.map((e) => e.wind?.speed ?? 0);
+
+      const targetHour = 12;
+      const representative = entries.reduce((closest, current) => {
+        const currentHour = new Date(current.dt_txt.replace(' ', 'T')).getHours();
+        const closestHour = new Date(closest.dt_txt.replace(' ', 'T')).getHours();
+        return Math.abs(currentHour - targetHour) < Math.abs(closestHour - targetHour)
+          ? current
+          : closest;
+      }, entries[0]);
+
+      const dateObj = new Date(`${dateStr}T00:00:00`);
+
+      return {
+        date: dateObj,
+        day: dateObj.toLocaleDateString('en', { weekday: 'short' }),
+        condition: representative.weather[0]?.description ?? 'N/A',
+        icon: mapWeatherIdToIcon(representative.weather[0]?.id),
+        tempHigh: Math.round(Math.max(...temps)),
+        tempLow: Math.round(Math.min(...temps)),
+        humidity: Math.round(
+          humidityValues.reduce((sum, value) => sum + value, 0) / humidityValues.length
+        ),
+        windSpeed: Math.round(
+          (windValues.reduce((sum, value) => sum + value, 0) / windValues.length) * 3.6
+        ), // m/s to km/h
+      };
+    });
   };
 
   const formatDate = (date) => {
@@ -262,8 +304,10 @@ export default function ForecastScreen() {
               >
                 <View style={styles.forecastContent}>
                   <View style={styles.dateSection}>
-                    <Text style={styles.dayText}>{item.day}</Text>
-                    <Text style={styles.dateText}>
+                    <Text style={styles.dayText} numberOfLines={1} ellipsizeMode="tail">
+                      {item.day}
+                    </Text>
+                    <Text style={styles.dateText} numberOfLines={1} ellipsizeMode="tail">
                       {formatDate(item.date)}
                     </Text>
                   </View>
@@ -271,20 +315,22 @@ export default function ForecastScreen() {
                   <View style={styles.weatherSection}>
                     <MaterialCommunityIcons
                       name={item.icon}
-                      size={32}
+                      size={30}
                       color="#fff"
                     />
-                    <Text style={styles.conditionText}>{item.condition}</Text>
+                    <Text style={styles.conditionText} numberOfLines={1} ellipsizeMode="tail">
+                      {item.condition}
+                    </Text>
                   </View>
 
                   <View style={styles.tempSection}>
                     <View style={styles.tempRow}>
-                      <Text style={styles.tempLabel}>High</Text>
-                      <Text style={styles.tempHigh}>{item.tempHigh}°</Text>
+                      <Text style={styles.tempLabel} numberOfLines={1}>High</Text>
+                      <Text style={styles.tempHigh} numberOfLines={1}>{item.tempHigh}°</Text>
                     </View>
                     <View style={styles.tempRow}>
-                      <Text style={styles.tempLabel}>Low</Text>
-                      <Text style={styles.tempLow}>{item.tempLow}°</Text>
+                      <Text style={styles.tempLabel} numberOfLines={1}>Low</Text>
+                      <Text style={styles.tempLow} numberOfLines={1}>{item.tempLow}°</Text>
                     </View>
                   </View>
 
@@ -295,7 +341,7 @@ export default function ForecastScreen() {
                         size={16}
                         color="rgba(255, 255, 255, 0.7)"
                       />
-                      <Text style={styles.detailText}>{item.humidity}%</Text>
+                      <Text style={styles.detailText} numberOfLines={1}>{item.humidity}%</Text>
                     </View>
                     <View style={styles.detailItem}>
                       <MaterialCommunityIcons
@@ -303,7 +349,7 @@ export default function ForecastScreen() {
                         size={16}
                         color="rgba(255, 255, 255, 0.7)"
                       />
-                      <Text style={styles.detailText}>{item.windSpeed} km/h</Text>
+                      <Text style={styles.detailText} numberOfLines={1}>{item.windSpeed} km/h</Text>
                     </View>
                   </View>
                 </View>
@@ -437,6 +483,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 30,
+    marginTop: 40,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -486,34 +533,42 @@ const styles = StyleSheet.create({
   forecastContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 8,
+    minHeight: 78,
   },
   dateSection: {
     flex: 1,
+    paddingRight: 8,
   },
   dayText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   dateText: {
     color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
+    fontSize: 13,
     marginTop: 2,
   },
   weatherSection: {
-    flex: 1.5,
+    flex: 1.2,
     alignItems: 'center',
+    paddingHorizontal: 4,
   },
   conditionText: {
     color: '#fff',
-    fontSize: 14,
-    marginTop: 5,
+    fontSize: 13,
+    marginTop: 4,
     textAlign: 'center',
   },
   tempSection: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
   tempRow: {
     flexDirection: 'row',
@@ -522,34 +577,37 @@ const styles = StyleSheet.create({
   },
   tempLabel: {
     color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 12,
-    width: 30,
+    fontSize: 11,
+    width: 34,
   },
   tempHigh: {
     color: '#FF6B6B',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     marginLeft: 5,
   },
   tempLow: {
     color: '#4ECDC4',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     marginLeft: 5,
   },
   detailsSection: {
     flex: 1,
     alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingLeft: 6,
+    gap: 6,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 2,
+    gap: 4,
+    marginVertical: 1,
   },
   detailText: {
     color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    marginLeft: 5,
+    fontSize: 13,
   },
   summaryContainer: {
     marginTop: 10,

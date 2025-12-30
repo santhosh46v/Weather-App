@@ -5,20 +5,21 @@
     "version": "1.0.0",
     "scheme": "aeris",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/weather.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/weather.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "Y"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/weather.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -30,13 +31,14 @@
     "permissions": [
       "ACCESS_FINE_LOCATION"
     ],
-    "extra": {
-      "eas": {
-        "projectId": "cb83579e-b543-4ebf-93a0-2f221479fcee"
-      }
-    },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3eb779be-6a1c-4464-bbd3-46b9911a884e"
+      }
+    }
   }
 }
