@@ -5,14 +5,6 @@ A simple and beautiful weather application built using **React Native** and **Ex
 ---
 
 ## 🚀 Setup Instructions
-🌦️ Weather App
-===============
-
-A simple and beautiful weather application built using **React Native** and **Expo**. It fetches live weather data using the **OpenWeatherMap API**.
-
----
-
-## 🚀 Setup Instructions
 
 ### 📦 Prerequisites
 
